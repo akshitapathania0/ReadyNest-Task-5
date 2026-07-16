@@ -59,7 +59,6 @@ services:
   - type: web
     name: nexaos-frontend
     runtime: static
-    region: oregon
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
