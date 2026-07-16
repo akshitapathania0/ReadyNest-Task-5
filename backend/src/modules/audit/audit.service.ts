@@ -21,7 +21,7 @@ export async function logAudit(event: AuditEvent) {
         action: event.action,
         resource: event.resource,
         resourceId: event.resourceId,
-        details: event.details || {},
+        details: (event.details || {}) as any,
         ipAddress: event.req?.ip,
         userAgent: event.req?.headers['user-agent'],
       },
