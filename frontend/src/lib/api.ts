@@ -43,7 +43,8 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as any;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isPublicRoute = originalRequest.url?.includes('/auth/invite/');
+    if (error.response?.status === 401 && !originalRequest._retry && !isPublicRoute) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
