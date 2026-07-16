@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id           String        @id @default(uuid())
+  name         String
+  slug         String        @unique
+  domain       String?       @unique
+  plan         Plan          @default(FREE)
+  logoUrl      String?
+  settings     Json          @default("{}")
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  users        User[]
+  projects     Project[]
+  files        File[]
+  auditLogs    AuditLog[]
+  apiKeys      ApiKey[]
+  joinRequests JoinRequest[]
+  invites      Invite[]
+
+  @@map("tenants")
+}
+
+enum Plan {
+  FREE
+  TEAM
+  PRO
+  ENTERPRISE
+}
+
+model User {
+  id            String    @id @default(uuid())
+  tenantId      String
+  email         String
+  name          String
+  passwordHash  String
+  role          Role      @default(MEMBER)
+  avatarUrl     String?
+  isActive      Boolean   @default(true)
+  emailVerified Boolean   @default(false)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  refreshTokens RefreshToken[]
+  projects      ProjectMember[]
+  uploadedFiles File[]
+  auditLogs     AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  tenantId   String
+  name       String
+  keyHash    String    @unique
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("api_keys")
+}
+
+model JoinRequest {
+  id           String            @id @default(uuid())
+  tenantId     String
+  name         String
+  email        String
+  passwordHash String            @default("")
+  role         Role              @default(MEMBER)
+  status       JoinRequestStatus @default(PENDING)
+  message      String?
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime          @default(now())
+
+  tenant       Tenant            @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, email])
+  @@index([tenantId, status])
+  @@map("join_requests")
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Invite {
+  id         String       @id @default(uuid())
+  tenantId   String
+  email      String
+  role       Role         @default(MEMBER)
+  token      String       @unique @default(uuid())
+  invitedBy  String
+  status     InviteStatus @default(PENDING)
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  tenant     Tenant       @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([token])
+  @@map("invites")
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  status      ProjectStatus @default(PLANNING)
+  dueDate     DateTime?
+  progress    Int           @default(0)
+  metadata    Json          @default("{}")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id])
+  members     ProjectMember[]
+  files       File[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  IN_REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
+model ProjectMember {
+  id        String  @id @default(uuid())
+  projectId String
+  userId    String
+  role      String  @default("member")
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model File {
+  id            String   @id @default(uuid())
+  tenantId      String
+  uploadedById  String
+  projectId     String?
+  name          String
+  originalName  String
+  mimeType      String
+  size          Int
+  cloudinaryId  String   @unique
+  cloudinaryUrl String
+  folder        String   @default("root")
+  visibility    String   @default("workspace")
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  uploadedBy  User     @relation(fields: [uploadedById], references: [id])
+  project     Project? @relation(fields: [projectId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, folder])
+  @@map("files")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  details    Json     @default("{}")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, action])
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}

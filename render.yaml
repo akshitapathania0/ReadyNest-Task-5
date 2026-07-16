@@ -1,0 +1,113 @@
+# NexaOS — Render Blueprint
+# Deploy your entire stack with one file.
+# Push this to your repo root, then: Render Dashboard → New → Blueprint → connect repo.
+#
+# Services this creates:
+#   1. nexaos-backend  — Node.js API + Socket.io  (Web Service)
+#   2. nexaos-frontend — React SPA                 (Static Site)
+#   3. nexaos-db       — PostgreSQL                (Managed DB)
+#   4. nexaos-redis    — Key Value (Redis)          (Managed KV)
+
+databases:
+  - name: nexaos-db
+    plan: basic-256mb        # $20/mo — upgrade to standard-1gb for production
+    region: oregon
+    databaseName: nexaos
+    user: nexaos
+
+services:
+  # ── Redis (Key Value) ──────────────────────────────────────────────────
+  - type: keyvalue
+    name: nexaos-redis
+    plan: starter            # $10/mo, 25MB — upgrade to basic-1gb ($30) for prod
+    region: oregon
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList:
+      - source: 0.0.0.0/0   # Allow all — Render private network handles security
+        description: Allow all (private network)
+
+  # ── Backend API + Socket.io ────────────────────────────────────────────
+  - type: web
+    name: nexaos-backend
+    runtime: node
+    region: oregon
+    plan: starter            # $7/mo starter, upgrade to standard ($25) for production
+    rootDir: backend
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+
+    envVars:
+      # ── Database ───────────────────────────────────────────────────────
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nexaos-db
+          property: connectionString
+
+      # ── Redis ──────────────────────────────────────────────────────────
+      - key: REDIS_URL
+        fromService:
+          name: nexaos-redis
+          type: keyvalue
+          property: connectionString
+
+      # ── App config ─────────────────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        value: "10000"       # Render always uses port 10000
+
+      - key: CLIENT_URL
+        fromService:
+          name: nexaos-frontend
+          type: web
+          property: host    # auto-wired to the frontend's public URL
+
+      # ── Secrets — fill these in the Render Dashboard when prompted ─────
+      - key: JWT_SECRET
+        sync: false         # Render prompts you to enter this securely on first deploy
+
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+
+      - key: CLOUDINARY_API_KEY
+        sync: false
+
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      - key: RESEND_API_KEY
+        sync: false
+
+      - key: EMAIL_FROM
+        value: noreply@nexaos.app
+
+  # ── Frontend (React Static Site — served via global CDN) ───────────────
+  - type: web
+    name: nexaos-frontend
+    runtime: static
+    region: oregon
+    plan: starter
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+
+    headers:
+      # Required for React Router (client-side routing)
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+
+    routes:
+      # Send all routes to index.html so React Router handles them
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: nexaos-backend
+          type: web
+          property: host
