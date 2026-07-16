@@ -1,32 +1,32 @@
-# NexaOS — Render Blueprint
+# NexaOS --- Render Blueprint
 # Deploy your entire stack with one file.
-# Push this to your repo root, then: Render Dashboard → New → Blueprint → connect repo.
+# Push this to your repo root, then: Render Dashboard --- New --- Blueprint --- connect repo.
 #
 # Services this creates:
-#   1. nexaos-backend  — Node.js API + Socket.io  (Web Service)
-#   2. nexaos-frontend — React SPA                 (Static Site)
-#   3. nexaos-db       — PostgreSQL                (Managed DB)
-#   4. nexaos-redis    — Key Value (Redis)          (Managed KV)
+#   1. nexaos-backend  --- Node.js API + Socket.io  (Web Service)
+#   2. nexaos-frontend --- React SPA                 (Static Site)
+#   3. nexaos-db       --- PostgreSQL                (Managed DB)
+#   4. nexaos-redis    --- Key Value (Redis)          (Managed KV)
 
 databases:
   - name: nexaos-db
-    plan: basic-256mb        # $20/mo — upgrade to standard-1gb for production
+    plan: basic-256mb        # $20/mo --- upgrade to standard-1gb for production
     region: oregon
     databaseName: nexaos
     user: nexaos
 
 services:
-  # ── Redis (Key Value) ──────────────────────────────────────────────────
+  # ------ Redis (Key Value) ------------------------------------------------------------------------------------------------------------------------------------------------------
   - type: keyvalue
     name: nexaos-redis
-    plan: starter            # $10/mo, 25MB — upgrade to basic-1gb ($30) for prod
+    plan: starter            # $10/mo, 25MB --- upgrade to basic-1gb ($30) for prod
     region: oregon
     maxmemoryPolicy: allkeys-lru
     ipAllowList:
-      - source: 0.0.0.0/0   # Allow all — Render private network handles security
+      - source: 0.0.0.0/0   # Allow all --- Render private network handles security
         description: Allow all (private network)
 
-  # ── Backend API + Socket.io ────────────────────────────────────────────
+  # ------ Backend API + Socket.io ------------------------------------------------------------------------------------------------------------------------------------
   - type: web
     name: nexaos-backend
     runtime: node
@@ -38,20 +38,20 @@ services:
     healthCheckPath: /health
 
     envVars:
-      # ── Database ───────────────────────────────────────────────────────
+      # ------ Database ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
       - key: DATABASE_URL
         fromDatabase:
           name: nexaos-db
           property: connectionString
 
-      # ── Redis ──────────────────────────────────────────────────────────
+      # ------ Redis ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
       - key: REDIS_URL
         fromService:
           name: nexaos-redis
           type: keyvalue
           property: connectionString
 
-      # ── App config ─────────────────────────────────────────────────────
+      # ------ App config ---------------------------------------------------------------------------------------------------------------------------------------------------------------
       - key: NODE_ENV
         value: production
 
@@ -64,7 +64,7 @@ services:
           type: web
           property: host    # auto-wired to the frontend's public URL
 
-      # ── Secrets — fill these in the Render Dashboard when prompted ─────
+      # ------ Secrets --- fill these in the Render Dashboard when prompted ---------------
       - key: JWT_SECRET
         sync: false         # Render prompts you to enter this securely on first deploy
 
@@ -83,7 +83,7 @@ services:
       - key: EMAIL_FROM
         value: noreply@nexaos.app
 
-  # ── Frontend (React Static Site — served via global CDN) ───────────────
+  # ------ Frontend (React Static Site --- served via global CDN) ---------------------------------------------
   - type: web
     name: nexaos-frontend
     runtime: static
