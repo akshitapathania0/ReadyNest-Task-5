@@ -17,7 +17,6 @@ A complete full-stack multi-tenant SaaS platform with role-based access control,
 | Auth | JWT (access 15m) + rotating refresh tokens (7d) stored in Redis |
 | File storage | Cloudinary (direct upload + signed URLs) |
 | Email | Resend |
-| Container | Docker + Docker Compose |
 
 ## Role-Based Access Control
 
