@@ -18,22 +18,12 @@ A complete full-stack multi-tenant SaaS platform with role-based access control,
 | File storage | Cloudinary (direct upload + signed URLs) |
 | Email | Resend |
 
-## Role-Based Access Control
-
-| Role | Permissions |
-|---|---|
-| `SUPER_ADMIN` | Full platform access, cross-tenant |
-| `ADMIN` | Full access within own tenant |
-| `MEMBER` | Read + write within assigned projects |
-| `VIEWER` | Read-only |
-
 ## Demo credentials (after seeding)
 
 | Tenant slug | Email | Password | Role |
 |---|---|---|---|
 | `acme` | admin@acme.com | `password` | Admin |
 | `acme` | member@acme.com | `password` | Member |
-| `techstart` | admin@techstart.com | `password` | Admin |
 
 ## Project Structure
 
